@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <stdio.h>
 #include "src/uart_comm.c"
 #include "src/sensors.c"
 
@@ -11,14 +12,13 @@ void setup() {
 
 uint8_t last_command;
 uint8_t last_command_data;
-#include <stdio.h>
-
 void handle_command(){
     char debugMsg[128]; // Buffer per la stringa di debug
     sprintf(debugMsg, "Ricevuto Comando: %d con dati: %d", last_command, last_command_data);
     sendPacket(MSG_DEBUG, (uint8_t*)debugMsg, strlen(debugMsg));
 }
 
+unsigned long lastTelemetryTime;
 void loop() {
     // Read and Send Telemetry to Rapsberry
     unsigned long now = millis();

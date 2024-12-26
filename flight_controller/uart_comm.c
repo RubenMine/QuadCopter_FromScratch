@@ -1,12 +1,13 @@
 #include <stdint.h>
 #include <stddef.h>
-#include "sensors.c"
-#include <Arduino.h>
 
-#define START_BYTE     0xAA
-#define MSG_TELEMETRY  0x01
-#define MSG_COMMAND    0x02
-#define MSG_DEBUG      0x03
+
+#define START_BYTE 10 //0xAA
+
+#define MSG_DEBUG 1
+#define MSG_TELEMETRY 2
+#define UART_TIMEOUT 1000
+
 
 void init_communication(){
     Serial.begin(9600);
@@ -71,17 +72,17 @@ bool read_command(uint8_t *command_type, uint8_t *command_data) {
     }
 
     // Calcola il CRC del pacchetto
-    crc_calculated = calculate_crc(*command_type, *data);
+    //crc_calculated = calculate_crc(*command_type, *data);
 
     // Verifica che il CRC corrisponda
-    if (crc_calculated != crc_received) {
-        return false; // CRC non corrisponde
-    }
+    //if (crc_calculated != crc_received) {
+    //    return false; // CRC non corrisponde
+    //}
     
     return true;
 }
 
-// Implementazioni di base per uart_read_byte e calculate_crc
+
 bool uart_read_byte(uint8_t *byte, uint32_t timeout) {
     unsigned long start_time = millis(); // Ottieni il tempo attuale in millisecondi
 
