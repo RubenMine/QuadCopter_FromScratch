@@ -1,42 +1,53 @@
 #include <Arduino.h>
-#include <stdio.h>
-#include "src/uart_comm.c"
-#include "src/sensors.c"
+#include <string.h> // Per strcmp
+#include <stdint.h> // Per uint8_t, uint32_t
+#include <stdbool.h> // Per il tipo bool
 
-void setup() {
-    init_communication();       // Inizializzazione delle seriali
-    init_sensors();             // Inizializzazione dei sensori
 
-    delay(2000); // Attendi l'inizializzazione delle comunicazioni
-}
+#include "flight_fsm.c"
+#include "uart_comm.c"
+#include "sensors.c"
+#include "motor.c"
+#include "pid_controller.c"
+#include "command.c"
 
-uint8_t last_command;
-uint8_t last_command_data;
-void handle_command(){
-    char debugMsg[128]; // Buffer per la stringa di debug
-    sprintf(debugMsg, "Ricevuto Comando: %d con dati: %d", last_command, last_command_data);
-    sendPacket(MSG_DEBUG, (uint8_t*)debugMsg, strlen(debugMsg));
-}
+void setup() {}
 
-unsigned long lastTelemetryTime;
+
 void loop() {
-    // Read and Send Telemetry to Rapsberry
-    unsigned long now = millis();
-    if (now - lastTelemetryTime > 1000) {
-
-        get_gyro_data();
-
-        if(read_command(&last_command, &last_command_data)){
-            handle_command();
-        }
-
-        // Invia telemetria (binario)
-        sendPacket(MSG_TELEMETRY, (uint8_t*)&currentTelemetry, sizeof(currentTelemetry));
-
-        // Invia messaggio di debug (stringa ASCII, ma incapsulata nel pacchetto binario)
-        const char* debugMsg = "Ho inviato Telemetria";
-        sendPacket(MSG_DEBUG, (uint8_t*)debugMsg, strlen(debugMsg));
-
-        lastTelemetryTime = now;
-    }
+    flight_fsm_run();
 }
+
+
+
+// Funzione per inviare la telemetria tramite UART
+void send_telemetry() {
+    uint8_t packet[19]; // 1 byte di start + 4 float (4x4 byte)
+
+    packet[0] = 0xAA; // Byte di start
+
+    // Riempie il pacchetto con i dati di telemetria
+    memcpy(&packet[1], &currentTelemetry.roll, 4);
+    memcpy(&packet[5], &currentTelemetry.pitch, 4);
+    memcpy(&packet[9], &currentTelemetry.yaw, 4);
+    memcpy(&packet[13], &currentTelemetry.altitude, 4);
+
+    // Invia il pacchetto tramite UART
+    uart_write_bytes(packet, sizeof(packet));
+}
+
+/*
+// Read and Send Telemetry to Rapsberry
+unsigned long now = millis();
+if (now - lastTelemetryTime > 1000) {
+    get_telemetry();
+    drone_control();
+    drone_motor();
+    send_telemetry();
+    
+    if(read_command()){
+        handle_command();
+    }
+    lastTelemetryTime = now;
+}
+*/

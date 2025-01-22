@@ -3,31 +3,82 @@
 #include "pid_controller.h"
 #include "sensors.h"
 
+
 typedef enum {
     STATE_WAIT,
-    STATE_IDLE,
-    STATE_TAKEOFF,
+    STATE_READY,
     STATE_FLIGHT
 } FlightState;
 
-void flight_fsm_run(FlightState *current_state) {
-    switch (*current_state) {
+FlightState currentState = STATE_WAIT;
+
+void flight_fsm_run() {
+    switch (currentState) {
+    
         case STATE_WAIT:
-            printf("Waiting for command...\n");
-            // Logica per passare a IDLE
-            *current_state = STATE_IDLE;
+            Serial.println("[STATE] WAIT");
+            handleWait();
             break;
-        case STATE_IDLE:
-            printf("Idle: Sending telemetry.\n");
-            // Passa a Takeoff su comando
-            *current_state = STATE_TAKEOFF;
+            
+        case STATE_READY:
+            Serial.println("[STATE] READY");
+            handleReady()
             break;
-        case STATE_TAKEOFF:
-            printf("Taking off...\n");
-            *current_state = STATE_FLIGHT;
-            break;
+            
         case STATE_FLIGHT:
-            printf("In Flight.\n");
+            Serial.println("[STATE] FLIGHT");
+            handleFlight()
             break;
     }
+}
+
+
+void flight_fsm_transition(char* command) {
+    switch (currentState) {
+
+        case STATE_WAIT:
+            if (strcmp(command, "READY") == 0) {
+                currentState = STATE_READY;
+            }
+            break;
+            
+        case STATE_READY:
+            if (strcmp(command, "START") == 0) {
+                currentState = STATE_FLIGHT;
+            }
+            break;
+            
+        case STATE_FLIGHT:
+            if (strcmp(command, "STOP") == 0) {
+                currentState = STATE_WAIT;
+            }
+            break;
+    }
+}
+
+void handleWait() {
+    Serial.println("[DEBUG] INIT PROCEDURE STARTED");
+    
+    init_communication();
+    init_sensors();
+    init_esc();
+    init_pid_controllers() 
+    
+    Serial.println("[DEBUG] INIT PROCEDURE COMPLETED!");    
+    
+    
+    // Change State
+    flight_fsm_transition("READY"); 
+}
+
+void handleReady(){
+    if(read_command()){ handle_command(); }
+}
+
+void handleFlight(){
+    if(read_command()){ handle_command(); } 
+    get_telemetry();
+    //drone_control();
+    drone_motor();
+    send_telemetry();
 }

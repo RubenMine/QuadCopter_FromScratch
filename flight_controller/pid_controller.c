@@ -1,12 +1,13 @@
-#include <stdio.h>
-#include <stdint.h>
-#include "sensors.c"
+#include "header/pid.h"
 
-typedef struct {
-    float kp, ki, kd;
-    float setpoint;
-    float integral, previous_error;
-} PIDController;
+void init_pid_controllers() {
+    pid_init(&roll_pid, 1.0f, 0.0f, 0.0f);
+    pid_init(&pitch_pid, 1.0f, 0.0f, 0.0f);
+    pid_init(&yaw_pid, 1.0f, 0.0f, 0.0f);
+    pid_init(&altitude_pid, 1.0f, 0.0f, 0.0f);
+    Serial.println("[DEBUG] PIDs Inizializzati!");
+
+}
 
 void pid_init(PIDController *pid, float kp, float ki, float kd) {
     pid->kp = kp;
