@@ -15,8 +15,8 @@ class Handler():
 
 from CommProtocols import UARTAdapter, HTTPAdapter
 
-class CommunicationHandler(Handler):
-    def _initialize(self):
+class CommunicationHandler():
+    def __init__(self):
         # Dizionario di adapter per i vari protocolli
         self.adapters = {
             'UART': UARTAdapter(),
@@ -33,7 +33,7 @@ class CommunicationHandler(Handler):
         else:
             raise ValueError(f"Unsupported protocol: {protocol}")
 
-    def read(self, protocol, **kwargs):
+    def receive(self, protocol, **kwargs):
         """
         Invoca il metodo di ricezione del protocollo corretto.
         """
@@ -42,61 +42,50 @@ class CommunicationHandler(Handler):
             #return DataHandler().format(data)
         else:
             raise ValueError(f"Unsupported protocol: {protocol}")
+        
+    def read(self, protocol, **kwargs):
+        """
+        Invoca il metodo di ricezione del protocollo corretto.
+        """
+        if protocol in self.adapters:
+            return self.adapters[protocol].read(**kwargs)
+            #return DataHandler().format(data)
+        else:
+            raise ValueError(f"Unsupported protocol: {protocol}")
 
 
 import struct
 
 class DataHandler(Handler):
-    def _initialize(self):
-        # Define packet type
-        self.TELEMETRY = 1
-        self.CONTROLLER_DEBUG = 2
-        self.PROCESSOR_DEBUG = 3
-        self.COMMAND = 4
-        self.TAKEOFF = 5
-        pass
 
-    def format_packet_into_json(self, type, data):
-        f_data = dict()
+    switcher = {
+            0: "WAIT",
+            1: "READY",
+            2: "FLIGHT"
+    }
 
-        if type == self.TELEMETRY:
-            roll, pitch, yaw, altitude = struct.unpack('ffff', data)
-            f_data["type"] = "telemetry"
-            f_data["data"] = {
+    def unpack_telemetry(self, data):
+        unpacked_data = dict()
+
+        roll, pitch, yaw, altitude = struct.unpack('ffff', data)
+        unpacked_data = {
                 "roll": roll,
                 "pitch": pitch,
                 "yaw": yaw,
                 "altitude": altitude
             }
+           
+        return unpacked_data
 
-        elif type == self.CONTROLLER_DEBUG:
-            debug_str = data.decode('utf-8', errors='replace')
-            f_data["type"] = "controller_debug"
-            f_data["data"] = {
-                "msg": debug_str
+ 
+    def unpack_status(self, data):
+        unpacked_data = dict()
+
+        state, = struct.unpack('B', data)
+        print(state)
+
+        unpacked_data = {
+                "state": self.switcher[state]
             }
-
-        elif type == self.COMMAND:
-            ctype, cdata = struct.unpack('dd', data)
-            
-            f_data["type"] = "command"
-            if ctype == self.TAKEOFF:
-                f_data["data"] = {
-                "command_type": "takeoff",
-                "command_data": cdata
-            }
-
-        else:
-            f_data = {
-                'type': 'unknown',
-                'data': data
-            }
-
-        return f_data
-
-    def format_json_into_packet(data):
-        type = data["type"]
-
-        if type == "command":
-            pass
         
+        return unpacked_data

@@ -1,8 +1,7 @@
-import serial
+from serial import Serial
 import struct
 import time
-
-from Handlers import DataHandler
+#from Handlers import DataHandler
 
 # Costanti di protocollo
 START_BYTE = 10
@@ -26,7 +25,7 @@ def compute_crc8(data: bytes) -> int:
 
 class UARTAdapter:
     def __init__(self, port='/dev/ttyACM0', baudrate=9600):
-        self.serial_port = serial.Serial(port, baudrate, timeout=1)
+        self.serial_port = Serial(port, baudrate, timeout=1)
 
     def send(self, data, **kwargs):
         """
@@ -34,16 +33,17 @@ class UARTAdapter:
         Se data è una stringa, la converte in bytes UTF-8.
         """
         #packet = DataHandler().format_json_into_packet(data)
-        #self.serial_port.write(packet)
-        #return f"UART: Sent {data}"
-        
-        if isinstance(data, str):
-            data = data.encode('utf-8')
         self.serial_port.write(data)
         return f"UART: Sent {data}"
 
+	
+    def read(self):
+        """read raw line from serial port"""
+        return self.serial_port.readline()
+
+"""
     def receive(self):
-        """
+        
         Legge un pacchetto binario e lo decodifica in base a msg_type.
         Ritorna un dizionario con le informazioni decodificate, ad esempio:
           {
@@ -61,8 +61,8 @@ class UARTAdapter:
             } 
           }
         Se nessun pacchetto è disponibile o ci sono errori, restituisce None.
-        """
-        packet = self.read_packet()
+        
+        packet = self.receive_packet()
 
         if packet is None:
             return None
@@ -70,14 +70,16 @@ class UARTAdapter:
         msg_type, payload = packet
         DataHandler().format_packet_into_json(msg_type, payload)
 
+
+
     #read_packet
     def receive_packet(self):
-        """
+        
         Legge un pacchetto dal flusso seriale seguendo il formato:
           [START_BYTE | TYPE | LENGTH | DATA... | CRC]
 
         Restituisce (msg_type, payload) se tutto OK, altrimenti None.
-        """
+
         # Legge 1 byte
         start = self.serial_port.read(1)
         if len(start) == 0:
@@ -116,26 +118,51 @@ class UARTAdapter:
                 # bisognerebbe cercare nuovamente START_BYTE all'interno di 'payload'.
                 # Se non è START_BYTE, ricominciamo il ciclo e aspettiamo il prossimo byte. 
 
-
+"""
 
 import requests
 
 class HTTPAdapter:
-    def __init__(self, base_url='http://172.17.0.1:8123'):
+    def __init__(self, base_url='http://127.0.0.1:6000'):
+        """
+        base_url: L'endpoint del "client" a cui inviare richieste.
+                  Di default ipotizziamo che il client sia in ascolto
+                  su http://127.0.0.1:6000 (porta 6000).
+        """
         self.base_url = base_url
 
-    def send(self, data, endpoint='/api/webhook/drone_telemetry_webhook', **kwargs):
+    def send(self, data, endpoint='/telemetry', **kwargs):
         """
-        Invia dati a un server HTTP.
+        Esegue una POST verso: base_url + endpoint
+        Invia 'data' in formato JSON.
+        Esempio:
+            adapter = HTTPAdapter('http://192.168.1.50:6000')
+            adapter.send({"key": "val"}, '/telemetry')
         """
-        url = self.base_url + endpoint
-        response = requests.post(url, json=data, **kwargs)
-        return f"HTTP: Sent data to {url}, Response: {response.status_code}"
+        url = f"{self.base_url}{endpoint}"
+        try:
+            resp = requests.post(url, json=data, **kwargs)
+            return resp
+        except Exception as e:
+            print(f"[HTTPAdapter] Errore inviando a {url}: {e}")
+            return None
 
     def receive(self, endpoint='/api/config', **kwargs):
         """
-        Riceve dati da un server HTTP.
+        Esegue una GET verso: base_url + endpoint
+        Ritorna il JSON (dict) se status_code=200, altrimenti None.
+        Esempio:
+            adapter = HTTPAdapter('http://192.168.1.50:6000')
+            config_data = adapter.receive('/api/config')
         """
-        url = self.base_url + endpoint
-        response = requests.get(url, **kwargs)
-        return response.json()
+        url = f"{self.base_url}{endpoint}"
+        try:
+            resp = requests.get(url, **kwargs)
+            if resp.status_code == 200:
+                return resp.json()
+            else:
+                print(f"[HTTPAdapter] Errore GET {url}: {resp.status_code}")
+                return None
+        except Exception as e:
+            print(f"[HTTPAdapter] Eccezione GET {url}: {e}")
+            return None
