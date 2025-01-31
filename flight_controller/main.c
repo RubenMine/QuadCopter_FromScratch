@@ -78,8 +78,8 @@ unsigned long lastTime = 0;
 
 
 // Sensor HC-SR04
-#define TRIGGER_PIN 2
-#define ECHO_PIN    3
+#define TRIGGER_PIN 10
+#define ECHO_PIN    11
 
 
 
