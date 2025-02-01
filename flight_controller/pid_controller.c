@@ -1,3 +1,4 @@
+#include "header/pid.h"
 
 void pid_init(PID* pid, int kp, int ki, int kd, float UpperLimit, float LowerLimit, float setpoint, bool a_windup) {
     pid->Kp = kp;
